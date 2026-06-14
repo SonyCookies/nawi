@@ -86,9 +86,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         {/* Logo & Toggle */}
         <div className="flex items-center justify-between p-5 mb-2">
           <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed ? "mx-auto" : ""}`}>
-            <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-xl bg-purple-50 text-purple-600">
-              <span className="text-xl font-semibold">N</span>
-            </div>
+            <img src="/logo.png" className="w-10 h-10 object-contain shrink-0" alt="Nawi Logo" />
             {!isCollapsed && (
               <div className="flex flex-col">
                 <span className="text-xl font-bold tracking-tight text-gray-900">Nawi Web</span>
