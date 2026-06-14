@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Secrets and OAuth client configurations
+/app/secret/
+client_secret*.json
+*.apps.googleusercontent.com.json
+
