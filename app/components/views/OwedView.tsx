@@ -349,7 +349,7 @@ export default function OwedView() {
                 >
                   {/* Category Info Header */}
                   <div className="flex items-start justify-between">
-                    <div className="overflow-hidden pr-2">
+                    <div className="overflow-hidden pr-2 group-hover:pr-16 transition-all duration-200">
                       <div className="text-base font-bold text-gray-900 truncate" title={debt.personName}>
                         {debt.personName}
                       </div>
@@ -360,29 +360,29 @@ export default function OwedView() {
 
                     {/* Edit / Delete overlays */}
                     <div 
-                      className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 bg-white pl-2"
+                      className="absolute right-6 top-6 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         onClick={() => setDeleteDebt(debt)}
-                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors p-1 rounded cursor-pointer"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 hover:border-red-200 text-gray-400 hover:text-red-500 shadow-sm transition-colors cursor-pointer"
                         title="Delete collectible"
                       >
-                        <TrashIcon className="w-5 h-5" strokeWidth={2} />
+                        <TrashIcon className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
                       {debt.status !== "paid" && (
                         <button
                           onClick={() => setRecordDebt(debt)}
-                          className="text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors p-1 rounded cursor-pointer"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-colors cursor-pointer"
                           title="Record payment / Mark paid"
                         >
-                          <CheckIcon className="w-5 h-5 text-purple-600" strokeWidth={3} />
+                          <CheckIcon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                         </button>
                       )}
                     </div>
 
                     {/* Status/Overdue Indicator */}
-                    <div className="group-hover:hidden transition-all duration-150 shrink-0">
+                    <div className="group-hover:opacity-0 transition-opacity duration-200 shrink-0">
                       {days !== null && debt.status !== "paid" ? (
                         <DaysBadge days={days} />
                       ) : (

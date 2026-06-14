@@ -1,4 +1,4 @@
-import { db, type Account, type Transaction, type Category, type ScheduledItem } from "./db";
+import { db, type Account, type Transaction, type Category, type ScheduledItem, type Debt } from "./db";
 
 export interface BackupData {
   version: number;
@@ -7,6 +7,7 @@ export interface BackupData {
   transactions: Transaction[];
   categories: Category[];
   scheduledItems: ScheduledItem[];
+  debts?: Debt[];
 }
 
 /**
@@ -17,6 +18,7 @@ export async function exportDatabaseToJson(): Promise<string> {
   const transactions = await db.transactions.toArray();
   const categories = await db.categories.toArray();
   const scheduledItems = await db.scheduledItems.toArray();
+  const debts = await db.debts.toArray();
 
   const backup: BackupData = {
     version: 1,
@@ -24,7 +26,8 @@ export async function exportDatabaseToJson(): Promise<string> {
     accounts,
     transactions,
     categories,
-    scheduledItems
+    scheduledItems,
+    debts
   };
 
   return JSON.stringify(backup, null, 2);
@@ -75,19 +78,31 @@ export async function importDatabaseFromJson(jsonString: string): Promise<boolea
     createdAt: item.createdAt ? new Date(item.createdAt) : new Date()
   }));
 
+  const parsedDebts: Debt[] = (backup.debts || []).map(d => ({
+    ...d,
+    createdAt: d.createdAt ? new Date(d.createdAt) : new Date(),
+    dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
+    history: (d.history || []).map((h: any) => ({
+      ...h,
+      date: h.date ? new Date(h.date) : new Date()
+    }))
+  }));
+
   // Perform atomic table clear and restoration within a transaction
-  await db.transaction("rw", [db.accounts, db.transactions, db.categories, db.scheduledItems], async () => {
+  await db.transaction("rw", [db.accounts, db.transactions, db.categories, db.scheduledItems, db.debts], async () => {
     // Clear current tables
     await db.accounts.clear();
     await db.transactions.clear();
     await db.categories.clear();
     await db.scheduledItems.clear();
+    await db.debts.clear();
 
     // Re-populate tables using bulkPut to preserve ids
     if (parsedAccounts.length > 0) await db.accounts.bulkPut(parsedAccounts);
     if (parsedTransactions.length > 0) await db.transactions.bulkPut(parsedTransactions);
     if (parsedCategories.length > 0) await db.categories.bulkPut(parsedCategories);
     if (parsedScheduledItems.length > 0) await db.scheduledItems.bulkPut(parsedScheduledItems);
+    if (parsedDebts.length > 0) await db.debts.bulkPut(parsedDebts);
   });
 
   return true;
