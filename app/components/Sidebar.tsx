@@ -24,6 +24,7 @@ export const navigation = [
     { name: "Upcoming", icon: BellAlertIcon, tab: "Plan:Upcoming" },
     { name: "Budgets", icon: AdjustmentsHorizontalIcon, tab: "Plan:Budgets" },
     { name: "Owed to You", icon: UserGroupIcon, tab: "Plan:Owed" },
+    { name: "Owed to Someone", icon: UserGroupIcon, tab: "Plan:OwedToSomeone" },
   ]},
   { name: "Statistics", icon: ChartBarIcon },
   { name: "Settings", icon: Cog6ToothIcon },
@@ -86,7 +87,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         {/* Logo & Toggle */}
         <div className="flex items-center justify-between p-5 mb-2">
           <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed ? "mx-auto" : ""}`}>
-            <img src="/logo.png" className="w-10 h-10 object-contain shrink-0" alt="Nawi Logo" />
+            <img src="/nawi.png" className="w-10 h-10 object-contain shrink-0" alt="Nawi Logo" />
             {!isCollapsed && (
               <div className="flex flex-col">
                 <span className="text-xl font-bold tracking-tight text-gray-900">Nawi Web</span>

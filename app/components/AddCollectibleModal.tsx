@@ -55,6 +55,7 @@ export default function AddCollectibleModal({
         createdAt: new Date(),
         dueDate: hasDueDate && dueDate ? new Date(dueDate + "T00:00:00") : undefined,
         sortOrder: count + 1,
+        type: "lend",
         history: [
           {
             type: "creation",

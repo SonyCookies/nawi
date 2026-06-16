@@ -11,10 +11,10 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { db, type Debt } from "../../lib/db";
-import AddCollectibleModal from "../AddCollectibleModal";
-import RecordCollectionModal from "../RecordCollectionModal";
-import IncreaseCollectibleModal from "../IncreaseCollectibleModal";
-import CollectibleDetailModal from "../CollectibleDetailModal";
+import AddDebtModal from "../AddDebtModal";
+import RecordDebtPaymentModal from "../RecordDebtPaymentModal";
+import IncreaseDebtModal from "../IncreaseDebtModal";
+import DebtDetailModal from "../DebtDetailModal";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ function DeleteDebtModal({
             <ExclamationTriangleIcon className="w-6 h-6" strokeWidth={2} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-xl font-bold text-gray-950 leading-tight">Delete collectible</h3>
+            <h3 className="text-xl font-bold text-gray-955 leading-tight">Delete debt</h3>
             <p className="text-gray-500 text-sm leading-relaxed">
               Are you sure you want to delete <span className="font-semibold text-gray-800">&quot;{debt.personName}&quot;</span>? This will permanently remove it from your records.
             </p>
@@ -124,8 +124,8 @@ function DeleteDebtModal({
 }
 
 /* ─── Main View ───────────────────────────────────────────────────────────── */
-export default function OwedView() {
-  const [selectedTab, setSelectedTab] = useState<"Outstanding" | "Collected / Settled">("Outstanding");
+export default function DebtView() {
+  const [selectedTab, setSelectedTab] = useState<"Outstanding" | "Paid / Settled">("Outstanding");
   const [addOpen, setAddOpen] = useState(false);
   const [recordDebt, setRecordDebt] = useState<Debt | null>(null);
   const [increaseDebt, setIncreaseDebt] = useState<Debt | null>(null);
@@ -135,7 +135,7 @@ export default function OwedView() {
 
   const debts = useLiveQuery(async () => {
     const list = await db.debts.toArray();
-    return list.filter(d => d.type !== "borrow").sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    return list.filter(d => d.type === "borrow").sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   }, [refresh]) || [];
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -228,7 +228,6 @@ export default function OwedView() {
     e.preventDefault();
   };
 
-
   const handleDelete = async (id: number) => {
     const debtObj = await db.debts.get(id);
     if (!debtObj) return;
@@ -296,17 +295,17 @@ export default function OwedView() {
       }
       window.dispatchEvent(new CustomEvent("show_toast", {
         detail: {
-          title: "Collectible Removed",
+          title: "Debt Removed",
           description: "The item, its transaction logs, and account balances have been reversed and deleted.",
           type: "success"
         }
       }));
     } catch (err) {
-      console.error("Error deleting collectible:", err);
+      console.error("Error deleting debt:", err);
       window.dispatchEvent(new CustomEvent("show_toast", {
         detail: {
           title: "Error",
-          description: "Failed to reverse transactions and delete collectible.",
+          description: "Failed to reverse transactions and delete debt.",
           type: "error"
         }
       }));
@@ -320,9 +319,9 @@ export default function OwedView() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <span className="text-[11px] text-purple-600 uppercase tracking-widest leading-none font-medium">Plan</span>
-            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mt-1 mb-1">Owed to You</h1>
+            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mt-1 mb-1">Owed to Someone</h1>
             <p className="text-gray-500 text-sm leading-relaxed mt-1">
-              Track amounts people owe you, collections, and settlement statuses.
+              Track amounts you owe to other people, repayments, and settlement statuses.
             </p>
           </div>
           <button
@@ -332,7 +331,7 @@ export default function OwedView() {
             <div className="flex items-center justify-center shrink-0">
               <PlusIcon className="w-6 h-6 text-white" strokeWidth={2} />
             </div>
-            <span>Add collectible</span>
+            <span>Add debt</span>
           </button>
         </div>
 
@@ -344,8 +343,8 @@ export default function OwedView() {
 
           {/* Left Side: Summary Metrics */}
           <div className="flex flex-col gap-1.5 z-10 w-full md:w-[45%]">
-            <span className="text-xs uppercase tracking-wider text-purple-300 font-medium">Owed Summary</span>
-            <h2 className="text-3xl font-black tracking-tight mt-1">Collectibles Cashflow</h2>
+            <span className="text-xs uppercase tracking-wider text-purple-300 font-medium">Debt Summary</span>
+            <h2 className="text-3xl font-black tracking-tight mt-1">Repayments Cashflow</h2>
             
             <div className="flex justify-between items-baseline mt-4 border-b border-white/10 pb-3">
               <span className="text-sm text-purple-200 font-medium">Total Outstanding:</span>
@@ -364,21 +363,21 @@ export default function OwedView() {
           <div className="w-full md:w-[50%] flex flex-col gap-3 z-10 bg-white/5 border border-white/10 p-5 rounded-2xl">
             <div className="flex justify-between items-center">
               <div>
-                <span className="text-xs text-purple-300 uppercase font-medium">Collection Progress</span>
+                <span className="text-xs text-purple-300 uppercase font-medium">Repayment Progress</span>
                 <div className="text-2xl font-black tracking-tight mt-1 text-emerald-400">
                   {stats.totalAmount > 0 ? Math.round((stats.totalSettled / stats.totalAmount) * 100) : 0}%
                 </div>
               </div>
             </div>
             <p className="text-xs text-purple-200/70 leading-relaxed mt-1">
-              Shows how much you have successfully retrieved out of the total ₱{stats.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} initially owed.
+              Shows how much you have successfully paid back out of the total ₱{stats.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} initially borrowed.
             </p>
           </div>
         </div>
 
-        {/* Tab Selector matching BudgetsView exactly */}
+        {/* Tab Selector */}
         <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-100 flex-wrap gap-1 w-max mb-2">
-          {(["Outstanding", "Collected / Settled"] as const).map((tab) => (
+          {(["Outstanding", "Paid / Settled"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setSelectedTab(tab)}
@@ -396,7 +395,7 @@ export default function OwedView() {
         {/* Categories Budget-style Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 select-none">
           {displayDebts.length === 0 ? (
-            <EmptyState label={selectedTab === "Outstanding" ? "All settled up! No outstanding collections." : "Nothing settled yet."} />
+            <EmptyState label={selectedTab === "Outstanding" ? "All paid up! No outstanding debts." : "Nothing paid back yet."} />
           ) : (
             displayDebts.map((debt, index) => {
               const remaining = debt.amount - debt.paidAmount;
@@ -435,7 +434,7 @@ export default function OwedView() {
                       <button
                         onClick={() => setDeleteDebt(debt)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 hover:border-red-200 text-gray-400 hover:text-red-500 shadow-sm transition-colors cursor-pointer"
-                        title="Delete collectible"
+                        title="Delete debt"
                       >
                         <TrashIcon className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
@@ -443,7 +442,7 @@ export default function OwedView() {
                         <button
                           onClick={() => setRecordDebt(debt)}
                           className="w-7 h-7 flex items-center justify-center rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-colors cursor-pointer"
-                          title="Record payment / Mark paid"
+                          title="Record payment / Settle"
                         >
                           <CheckIcon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                         </button>
@@ -473,7 +472,7 @@ export default function OwedView() {
                     <div className="flex justify-between items-end">
                       <div>
                         <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-0.5">
-                          {selectedTab === "Outstanding" ? "Collected" : "Settled Amount"}
+                          {selectedTab === "Outstanding" ? "Paid" : "Settled Amount"}
                         </div>
                         <div className="text-2xl font-black text-gray-900 truncate">
                           {formatCurrency(debt.paidAmount)}
@@ -481,7 +480,7 @@ export default function OwedView() {
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-0.5">
-                          {selectedTab === "Outstanding" ? "Remaining" : "Total Owed"}
+                          {selectedTab === "Outstanding" ? "Remaining" : "Total Debt"}
                         </div>
                         <div className="text-sm font-bold text-gray-800 truncate">
                           {formatCurrency(selectedTab === "Outstanding" ? remaining : debt.amount)}
@@ -507,24 +506,24 @@ export default function OwedView() {
       </div>
 
       {/* Modals */}
-      <AddCollectibleModal
+      <AddDebtModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
         onAdded={() => setRefresh((r) => r + 1)}
       />
-      <RecordCollectionModal
+      <RecordDebtPaymentModal
         debt={recordDebt}
         isOpen={!!recordDebt}
         onClose={() => setRecordDebt(null)}
         onRecorded={() => setRefresh((r) => r + 1)}
       />
-      <IncreaseCollectibleModal
+      <IncreaseDebtModal
         debt={increaseDebt}
         isOpen={!!increaseDebt}
         onClose={() => setIncreaseDebt(null)}
         onUpdated={() => setRefresh((r) => r + 1)}
       />
-      <CollectibleDetailModal
+      <DebtDetailModal
         debt={selectedDetailDebt}
         isOpen={!!selectedDetailDebt}
         onClose={() => setSelectedDetailDebt(null)}

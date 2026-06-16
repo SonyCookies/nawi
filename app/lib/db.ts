@@ -83,6 +83,7 @@ export interface Debt {
   dueDate?: Date;
   history?: DebtLog[];
   sortOrder?: number;
+  type?: "lend" | "borrow";
 }
 
 class NawiDatabase extends Dexie {

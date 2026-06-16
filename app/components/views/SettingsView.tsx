@@ -29,11 +29,24 @@ import {
 } from "../../lib/googleDrive";
 
 const AVAILABLE_ICONS = [
-  // Expense/Common Emojis
-  "🍔", "🍟", "🍕", "🥗", "☕", "🚗", "🚌", "✈️", "🛒", "👕", "👟", "🎬", "🎮", "⚽", "🏥", "💊", "🎓", "📚", "📄", "⚡",
-  "🏠", "🐾", "💈", "🔧", "🎁", "🎨", "🎵", "📦", "🛡️",
-  // Income Emojis
-  "💼", "💻", "💰", "📈", "🏦", "🏢", "📢", "🔄", "💵", "🪙", "🏆", "💎", "🏡"
+  // Food & Drink
+  "🍔", "🍟", "🍕", "🥗", "☕", "🍜", "🍣", "🍰", "🍩", "🍎", "🍺", "🍷",
+  // Transportation & Travel
+  "🚗", "🚌", "✈️", "🚄", "🚲", "🚕", "⛽", "🚢", "🏨", "🗺️",
+  // Shopping & Personal Care
+  "🛒", "👕", "👟", "👜", "💄", "🕶️", "💍", "💈", "🧴", "🧼",
+  // Entertainment & Leisure
+  "🎬", "🎮", "⚽", "🏀", "🎸", "🎨", "🎵", "🎟️", "🍿", "🎳",
+  // Health & Wellness
+  "🏥", "💊", "🩺", "🦷", "🧗", "🧘", "🐾",
+  // Education & Work
+  "🎓", "📚", "💻", "💼", "📄", "✏️", "🏢", "📢",
+  // Home & Utilities
+  "🏠", "🏡", "⚡", "💧", "🌐", "📱", "📺", "🔧", "🛋️", "🗑️", "📦",
+  // Borrowing & Hands
+  "🫴", "🫳", "🤝", "🤲", "💸", "⏳",
+  // Financial & Subscriptions
+  "💰", "📈", "🏦", "💵", "🪙", "💳", "🧾", "🔄", "🛡️", "💎", "🏆", "🎁", "🎈"
 ];
 
 export default function SettingsView() {
@@ -666,7 +679,7 @@ export default function SettingsView() {
                     {newCategoryIcon}
                   </button>
                   {showNewIconPicker && (
-                    <div className="absolute top-13 left-0 z-30 bg-white border border-gray-100 rounded-2xl p-3 shadow-xl grid grid-cols-5 gap-1.5 w-48 animate-fadeIn select-none">
+                    <div className="absolute top-13 left-0 z-30 bg-white border border-gray-100 rounded-2xl p-3 shadow-xl grid grid-cols-5 gap-1.5 w-48 animate-fadeIn select-none max-h-[180px] overflow-y-auto">
                       {AVAILABLE_ICONS.map((emoji) => (
                         <button
                           key={emoji}
@@ -733,7 +746,7 @@ export default function SettingsView() {
                             {editingIcon}
                           </button>
                           {showEditIconPickerForId === cat.id && (
-                            <div className="absolute top-10 left-0 z-30 bg-white border border-gray-100 rounded-2xl p-2.5 shadow-xl grid grid-cols-5 gap-1.5 w-44 animate-fadeIn select-none">
+                            <div className="absolute top-10 left-0 z-30 bg-white border border-gray-100 rounded-2xl p-2.5 shadow-xl grid grid-cols-5 gap-1.5 w-44 animate-fadeIn select-none max-h-[180px] overflow-y-auto">
                               {AVAILABLE_ICONS.map((emoji) => (
                                 <button
                                   key={emoji}

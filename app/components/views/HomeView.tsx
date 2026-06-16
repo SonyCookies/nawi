@@ -83,7 +83,7 @@ export default function HomeView() {
   });
 
   const [googleName, setGoogleName] = useState<string | null>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredDot, setHoveredDot] = useState<{ idx: number; type: "income" | "expense" } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -396,15 +396,16 @@ export default function HomeView() {
     return "bg-gray-50 text-gray-600 border-gray-200/50";
   };
 
-  // 6-month historical calculations for trend graph
+  // Daily trend calculations for the last 7 days
   const chartData = useMemo(() => {
     const data = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthLabel = d.toLocaleString("en-US", { month: "short" });
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
+      const fullDateLabel = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
       
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
       
       const inc = transactions
         .filter((tx) => tx.type === "income" && new Date(tx.date).getTime() >= start.getTime() && new Date(tx.date).getTime() <= end.getTime())
@@ -432,7 +433,8 @@ export default function HomeView() {
         }, 0);
         
       data.push({
-        label: monthLabel,
+        label: dayLabel,
+        fullDateLabel,
         income: inc,
         expense: exp,
       });
@@ -448,17 +450,29 @@ export default function HomeView() {
     });
     if (maxActual <= 0) return 1000;
     
-    // Find magnitude to scale proportionally
-    const magnitude = Math.pow(10, Math.floor(Math.log10(maxActual)));
-    const normalized = maxActual / magnitude;
+    // Add 20% margin to the actual max value
+    const padded = maxActual * 1.2;
     
-    let rounded;
-    if (normalized <= 1) rounded = 1;
-    else if (normalized <= 2) rounded = 2;
-    else if (normalized <= 5) rounded = 5;
-    else rounded = 10;
+    // Determine a clean rounding boundary step size
+    let step = 10;
+    if (padded > 100000) {
+      step = 50000;
+    } else if (padded > 50000) {
+      step = 10000;
+    } else if (padded > 10000) {
+      step = 5000;
+    } else if (padded > 5000) {
+      step = 1000;
+    } else if (padded > 1000) {
+      step = 500;
+    } else if (padded > 500) {
+      step = 100;
+    } else if (padded > 100) {
+      step = 50;
+    }
     
-    return rounded * magnitude;
+    const rounded = Math.ceil(padded / step) * step;
+    return rounded;
   }, [chartData]);
 
   const yAxisTicks = useMemo(() => {
@@ -539,14 +553,28 @@ export default function HomeView() {
           <div className="flex justify-between items-start z-10">
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] text-purple-600 uppercase tracking-wider font-semibold">Cashflow</span>
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight">6-month trend</h2>
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight">7-day trend</h2>
             </div>
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full tracking-wider">
-              PHP
-            </span>
+            
+            {/* Legend & Currency */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3.5 text-xs font-bold">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shrink-0" />
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Income</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shrink-0" />
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Expenses</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full tracking-wider">
+                PHP
+              </span>
+            </div>
           </div>
 
-          {/* Custom Pure-CSS Chart */}
+          {/* Custom Pure-CSS & SVG Line Chart */}
           <div className="flex-1 min-h-[220px] flex flex-col gap-3 justify-end pt-3 z-10">
             <div className="flex-1 relative flex flex-col justify-between chart-container">
               {/* Horizontal grid lines */}
@@ -560,7 +588,7 @@ export default function HomeView() {
               ))}
 
               {/* Follow Tooltip */}
-              {hoveredIndex !== null && chartData[hoveredIndex] && (
+              {hoveredDot !== null && chartData[hoveredDot.idx] && (
                 <div 
                   className="absolute bg-purple-950 text-white text-[13px] px-4 py-3 rounded-2xl shadow-xl border border-purple-900/30 whitespace-nowrap z-20 gap-2 flex flex-col pointer-events-none transition-all duration-75 animate-fadeIn"
                   style={{
@@ -570,61 +598,216 @@ export default function HomeView() {
                   }}
                 >
                   <div className="text-[11px] text-purple-300 border-b border-purple-800/60 pb-1.5 mb-0.5 text-center uppercase tracking-wider font-bold">
-                    {chartData[hoveredIndex].label} Summary
+                    {chartData[hoveredDot.idx].fullDateLabel}
                   </div>
-                  <div className="flex justify-between gap-6 items-center">
-                    <span className="text-purple-305 font-medium">Incoming:</span>
-                    <span className="text-white font-bold">{formatCurrency(chartData[hoveredIndex].income)}</span>
-                  </div>
-                  <div className="flex justify-between gap-6 items-center">
-                    <span className="text-purple-305 font-medium">Outgoing:</span>
-                    <span className="text-white font-bold">{formatCurrency(chartData[hoveredIndex].expense)}</span>
-                  </div>
+                  {hoveredDot.type === "income" ? (
+                    <div className="flex justify-between gap-6 items-center">
+                      <span className="text-emerald-450 font-medium">Incoming:</span>
+                      <span className="text-white font-bold">{formatCurrency(chartData[hoveredDot.idx].income)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between gap-6 items-center">
+                      <span className="text-red-400 font-medium">Outgoing:</span>
+                      <span className="text-white font-bold">{formatCurrency(chartData[hoveredDot.idx].expense)}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Overlaid Bars Container */}
-              <div className="absolute inset-y-0 left-11 right-0 flex justify-around items-end pb-0.5">
+              {/* SVG Line & Area Renderings */}
+              <div className="absolute inset-y-0 left-11 right-0 pointer-events-none">
+                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity="0.08" />
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Area under Income Line */}
+                  <path 
+                    d={(() => {
+                      let d = "";
+                      chartData.forEach((data, idx) => {
+                        const x = ((idx * 2 + 1) / 14) * 100;
+                        const y = 100 - (data.income / maxVal) * 100;
+                        if (idx === 0) {
+                          d = `M ${x} ${y}`;
+                        } else {
+                          const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
+                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100;
+                          const cpX1 = prevX + (x - prevX) / 3;
+                          const cpY1 = prevY;
+                          const cpX2 = prevX + 2 * (x - prevX) / 3;
+                          const cpY2 = y;
+                          d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x} ${y}`;
+                        }
+                      });
+                      if (!d) return "";
+                      const firstX = (1 / 14) * 100;
+                      const lastX = (((chartData.length - 1) * 2 + 1) / 14) * 100;
+                      return `${d} L ${lastX} 100 L ${firstX} 100 Z`;
+                    })()} 
+                    fill="url(#incomeGrad)" 
+                  />
+
+                  {/* Area under Expense Line */}
+                  <path 
+                    d={(() => {
+                      let d = "";
+                      chartData.forEach((data, idx) => {
+                        const x = ((idx * 2 + 1) / 14) * 100;
+                        const y = 100 - (data.expense / maxVal) * 100;
+                        if (idx === 0) {
+                          d = `M ${x} ${y}`;
+                        } else {
+                          const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
+                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100;
+                          const cpX1 = prevX + (x - prevX) / 3;
+                          const cpY1 = prevY;
+                          const cpX2 = prevX + 2 * (x - prevX) / 3;
+                          const cpY2 = y;
+                          d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x} ${y}`;
+                        }
+                      });
+                      if (!d) return "";
+                      const firstX = (1 / 14) * 100;
+                      const lastX = (((chartData.length - 1) * 2 + 1) / 14) * 100;
+                      return `${d} L ${lastX} 100 L ${firstX} 100 Z`;
+                    })()} 
+                    fill="url(#expenseGrad)" 
+                  />
+
+                  {/* Income Line */}
+                  <path 
+                    d={(() => {
+                      let d = "";
+                      chartData.forEach((data, idx) => {
+                        const x = ((idx * 2 + 1) / 14) * 100;
+                        const y = 100 - (data.income / maxVal) * 100;
+                        if (idx === 0) {
+                          d = `M ${x} ${y}`;
+                        } else {
+                          const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
+                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100;
+                          const cpX1 = prevX + (x - prevX) / 3;
+                          const cpY1 = prevY;
+                          const cpX2 = prevX + 2 * (x - prevX) / 3;
+                          const cpY2 = y;
+                          d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x} ${y}`;
+                        }
+                      });
+                      return d;
+                    })()} 
+                    fill="none" 
+                    stroke="#10b981" 
+                    strokeWidth="3" 
+                    strokeLinecap="round" 
+                  />
+
+                  {/* Expense Line */}
+                  <path 
+                    d={(() => {
+                      let d = "";
+                      chartData.forEach((data, idx) => {
+                        const x = ((idx * 2 + 1) / 14) * 100;
+                        const y = 100 - (data.expense / maxVal) * 100;
+                        if (idx === 0) {
+                          d = `M ${x} ${y}`;
+                        } else {
+                          const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
+                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100;
+                          const cpX1 = prevX + (x - prevX) / 3;
+                          const cpY1 = prevY;
+                          const cpX2 = prevX + 2 * (x - prevX) / 3;
+                          const cpY2 = y;
+                          d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x} ${y}`;
+                        }
+                      });
+                      return d;
+                    })()} 
+                    fill="none" 
+                    stroke="#ef4444" 
+                    strokeWidth="3" 
+                    strokeLinecap="round" 
+                  />
+                </svg>
+              </div>
+
+              {/* Columns containing vertical highlight lines and interactive hover areas */}
+              <div className="absolute inset-y-0 left-11 right-0 flex justify-around items-stretch pb-0.5">
                 {chartData.map((data, idx) => {
-                  const incomeHeight = `${Math.min(100, (data.income / maxVal) * 100)}%`;
-                  const expenseHeight = `${Math.min(100, (data.expense / maxVal) * 100)}%`;
-                  const isHovered = hoveredIndex === idx;
-                  const isAnyHovered = hoveredIndex !== null;
+                  const isIncomeHovered = hoveredDot?.idx === idx && hoveredDot?.type === "income";
+                  const isExpenseHovered = hoveredDot?.idx === idx && hoveredDot?.type === "expense";
+                  const isAnyHovered = hoveredDot !== null;
                   
                   return (
                     <div 
                       key={idx} 
-                      onMouseEnter={() => setHoveredIndex(idx)}
-                      onMouseLeave={() => setHoveredIndex(null)}
-                      onMouseMove={(e) => {
-                        const chartEl = e.currentTarget.closest('.chart-container');
-                        if (chartEl) {
-                          const rect = (chartEl as HTMLElement).getBoundingClientRect();
-                          setMousePos({
-                            x: e.clientX - rect.left,
-                            y: e.clientY - rect.top
-                          });
-                        }
-                      }}
-                      className={`flex items-end gap-2.5 h-full w-[80px] justify-center relative cursor-pointer pb-2.5 rounded-2xl transition-all duration-200 ${
+                      className={`flex items-center w-[64px] justify-center relative rounded-2xl transition-all duration-200 ${
                         isAnyHovered 
-                          ? isHovered 
-                            ? "bg-purple-50/60 border border-purple-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)] scale-[1.04]" 
-                            : "opacity-30 scale-[0.97]"
-                          : "hover:bg-purple-50/15"
+                          ? (isIncomeHovered || isExpenseHovered)
+                            ? "bg-purple-50/10 shadow-[0_8px_30px_rgba(0,0,0,0.005)]" 
+                            : "opacity-45 scale-[0.99]"
+                          : ""
                       }`}
                     >
-                      {/* Income Bar (Purple) */}
-                      <div 
-                        className="w-4 bg-purple-600 rounded-t-sm transition-all duration-300"
-                        style={{ height: incomeHeight }}
-                      />
+                      {/* Vertical highlight line when either dot of this day is hovered */}
+                      {(isIncomeHovered || isExpenseHovered) && (
+                        <div className="absolute inset-y-0 w-[1px] bg-purple-500/20 border-dashed pointer-events-none" />
+                      )}
 
-                      {/* Expense Bar (Purple Accent Light) */}
+                      {/* Income Dot Hover Box (w-8 h-8 wrapper for easier hover) */}
                       <div 
-                        className="w-4 bg-purple-200 rounded-t-sm transition-all duration-300"
-                        style={{ height: expenseHeight }}
-                      />
+                        onMouseEnter={() => setHoveredDot({ idx, type: "income" })}
+                        onMouseLeave={() => setHoveredDot(null)}
+                        onMouseMove={(e) => {
+                          const chartEl = e.currentTarget.closest('.chart-container');
+                          if (chartEl) {
+                            const rect = (chartEl as HTMLElement).getBoundingClientRect();
+                            setMousePos({
+                              x: e.clientX - rect.left,
+                              y: e.clientY - rect.top
+                            });
+                          }
+                        }}
+                        className="absolute w-8 h-8 flex items-center justify-center cursor-pointer z-20"
+                        style={{ bottom: `calc(${(data.income / maxVal) * 100}% - 16px)` }}
+                      >
+                        <div 
+                          className={`w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-md transition-all duration-200 ${
+                            isIncomeHovered ? "scale-135 ring-4 ring-emerald-500/25" : ""
+                          }`}
+                        />
+                      </div>
+
+                      {/* Expense Dot Hover Box (w-8 h-8 wrapper for easier hover) */}
+                      <div 
+                        onMouseEnter={() => setHoveredDot({ idx, type: "expense" })}
+                        onMouseLeave={() => setHoveredDot(null)}
+                        onMouseMove={(e) => {
+                          const chartEl = e.currentTarget.closest('.chart-container');
+                          if (chartEl) {
+                            const rect = (chartEl as HTMLElement).getBoundingClientRect();
+                            setMousePos({
+                              x: e.clientX - rect.left,
+                              y: e.clientY - rect.top
+                            });
+                          }
+                        }}
+                        className="absolute w-8 h-8 flex items-center justify-center cursor-pointer z-20"
+                        style={{ bottom: `calc(${(data.expense / maxVal) * 100}% - 16px)` }}
+                      >
+                        <div 
+                          className={`w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-md transition-all duration-200 ${
+                            isExpenseHovered ? "scale-135 ring-4 ring-red-500/25" : ""
+                          }`}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -634,7 +817,7 @@ export default function HomeView() {
             {/* X-Axis Labels */}
             <div className="flex pl-11 justify-around text-[10px] font-bold text-gray-400 uppercase tracking-wider">
               {chartData.map((data, idx) => (
-                <span key={idx} className="w-[80px] text-center">
+                <span key={idx} className="w-[64px] text-center">
                   {data.label}
                 </span>
               ))}

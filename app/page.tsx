@@ -11,6 +11,7 @@ import BudgetsView from "./components/views/BudgetsView";
 import StatisticsView from "./components/views/StatisticsView";
 import SettingsView from "./components/views/SettingsView";
 import OwedView from "./components/views/OwedView";
+import DebtView from "./components/views/DebtView";
 import FAB from "./components/FAB";
 import Toast from "./components/Toast";
 import { db } from "./lib/db";
@@ -151,6 +152,7 @@ export default function Home() {
             {activeTab === "Statistics" && <StatisticsView />}
             {activeTab === "Settings" && <SettingsView />}
             {activeTab === "Plan:Owed" && <OwedView />}
+            {activeTab === "Plan:OwedToSomeone" && <DebtView />}
           </div>
         </main>
 

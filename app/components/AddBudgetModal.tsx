@@ -6,8 +6,24 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
 
 export const AVAILABLE_ICONS = [
-  "🍔", "🍟", "🍕", "🥗", "☕", "🚗", "🚌", "✈️", "🛒", "👕", "👟", "🎬", "🎮", "⚽", "🏥", "💊", "🎓", "📚", "📄", "⚡",
-  "🏠", "🐾", "💈", "🔧", "🎁", "🎨", "🎵", "📦", "🛡️"
+  // Food & Drink
+  "🍔", "🍟", "🍕", "🥗", "☕", "🍜", "🍣", "🍰", "🍩", "🍎", "🍺", "🍷",
+  // Transportation & Travel
+  "🚗", "🚌", "✈️", "🚄", "🚲", "🚕", "⛽", "🚢", "🏨", "🗺️",
+  // Shopping & Personal Care
+  "🛒", "👕", "👟", "👜", "💄", "🕶️", "💍", "💈", "🧴", "🧼",
+  // Entertainment & Leisure
+  "🎬", "🎮", "⚽", "🏀", "🎸", "🎨", "🎵", "🎟️", "🍿", "🎳",
+  // Health & Wellness
+  "🏥", "💊", "🩺", "🦷", "🧗", "🧘", "🐾",
+  // Education & Work
+  "🎓", "📚", "💻", "💼", "📄", "✏️", "🏢", "📢",
+  // Home & Utilities
+  "🏠", "🏡", "⚡", "💧", "🌐", "📱", "📺", "🔧", "🛋️", "🗑️", "📦",
+  // Borrowing & Hands
+  "🫴", "🫳", "🤝", "🤲", "💸", "⏳",
+  // Financial & Subscriptions
+  "💰", "📈", "🏦", "💵", "🪙", "💳", "🧾", "🔄", "🛡️", "💎", "🏆", "🎁", "🎈"
 ];
 
 interface AddBudgetModalProps {

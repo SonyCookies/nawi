@@ -5,8 +5,8 @@ export interface BackupData {
   timestamp: string;
   accounts: Account[];
   transactions: Transaction[];
-  categories: Category[];
-  scheduledItems: ScheduledItem[];
+  categories?: Category[];
+  scheduledItems?: ScheduledItem[];
   debts?: Debt[];
 }
 
@@ -49,12 +49,6 @@ export async function importDatabaseFromJson(jsonString: string): Promise<boolea
   if (!Array.isArray(backup.transactions)) {
     throw new Error("Invalid backup format: missing transactions array");
   }
-  if (!Array.isArray(backup.categories)) {
-    throw new Error("Invalid backup format: missing categories array");
-  }
-  if (!Array.isArray(backup.scheduledItems)) {
-    throw new Error("Invalid backup format: missing scheduledItems array");
-  }
 
   // Parse and restore dates correctly
   const parsedAccounts: Account[] = backup.accounts.map(acc => ({
@@ -68,11 +62,11 @@ export async function importDatabaseFromJson(jsonString: string): Promise<boolea
     date: tx.date ? new Date(tx.date) : new Date()
   }));
 
-  const parsedCategories: Category[] = backup.categories.map(cat => ({
+  const parsedCategories: Category[] = (backup.categories || []).map(cat => ({
     ...cat
   }));
 
-  const parsedScheduledItems: ScheduledItem[] = backup.scheduledItems.map(item => ({
+  const parsedScheduledItems: ScheduledItem[] = (backup.scheduledItems || []).map(item => ({
     ...item,
     nextDueDate: item.nextDueDate ? new Date(item.nextDueDate) : undefined,
     createdAt: item.createdAt ? new Date(item.createdAt) : new Date()
