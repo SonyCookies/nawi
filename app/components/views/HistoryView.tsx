@@ -11,7 +11,7 @@ import {
   ChevronDownIcon,
   PlusIcon
 } from "@heroicons/react/24/outline";
-import { db, type Transaction } from "../../lib/db";
+import { db, type Transaction, type Account } from "../../lib/db";
 import DeleteTransactionModal from "../DeleteTransactionModal";
 
 export default function HistoryView() {
@@ -21,10 +21,27 @@ export default function HistoryView() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<{ id: number | string; description: string } | null>(null);
 
+  // Retrieve accounts from database to know their types (Credit/Paylater)
+  const accounts = useLiveQuery(() => db.accounts.toArray()) || [];
+
+  const accountMap = useMemo(() => {
+    const map = new Map<number, Account>();
+    accounts.forEach(acc => {
+      if (acc.id !== undefined) {
+        map.set(acc.id, acc);
+      }
+    });
+    return map;
+  }, [accounts]);
+
   // Retrieve transactions sorted by date descending
   const transactions = useLiveQuery(async () => {
     const txs = await db.transactions.toArray();
-    return txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return txs.sort((a, b) => {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return (b.id && a.id) ? (Number(b.id) - Number(a.id)) : 0;
+    });
   }) || [];
 
   // Expand transactions dynamically to show transfer fees as separate logs
@@ -55,7 +72,11 @@ export default function HistoryView() {
       // If dates match exactly, keep transfer above its fee
       if (a.isTransferFee && !b.isTransferFee) return 1;
       if (!a.isTransferFee && b.isTransferFee) return -1;
-      return 0;
+      
+      // Secondary sort: latest ID on top
+      const aId = typeof a.id === "string" && a.id.startsWith("fee-") ? parseInt(a.id.replace("fee-", ""), 10) : Number(a.id || 0);
+      const bId = typeof b.id === "string" && b.id.startsWith("fee-") ? parseInt(b.id.replace("fee-", ""), 10) : Number(b.id || 0);
+      return bId - aId;
     });
   }, [transactions]);
 
@@ -81,6 +102,15 @@ export default function HistoryView() {
     });
   };
 
+  const formatTime = (dateInput: Date | string) => {
+    const d = new Date(dateInput);
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   const formatAmount = (amount: number, type: string, treatAsExpense?: boolean) => {
     const formatted = amount.toLocaleString("en-US", {
       minimumFractionDigits: 2,
@@ -89,6 +119,37 @@ export default function HistoryView() {
     if (type === "income") return `+₱${formatted}`;
     if (type === "expense" || treatAsExpense) return `-₱${formatted}`;
     return `₱${formatted}`; // Transfer
+  };
+
+  const getBeforeBalance = (
+    accountId: number | undefined,
+    afterBalance: number,
+    amount: number,
+    isSender: boolean,
+    fee = 0
+  ) => {
+    const acc = accountId !== undefined ? accountMap.get(accountId) : undefined;
+    const isCredit = acc ? (acc.type === "Credit" || acc.type === "Paylater") : false;
+    if (isSender) {
+      return isCredit ? afterBalance - amount - fee : afterBalance + amount + fee;
+    } else {
+      return isCredit ? afterBalance + amount : afterBalance - amount;
+    }
+  };
+
+  const formatBalanceTransition = (
+    accountName: string,
+    accountId: number | undefined,
+    afterBalance: number | undefined,
+    amount: number,
+    isSender: boolean,
+    fee = 0
+  ) => {
+    if (afterBalance === undefined) return accountName;
+    const before = getBeforeBalance(accountId, afterBalance, amount, isSender, fee);
+    const fmtBefore = before.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtAfter = afterBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${accountName} (₱${fmtBefore} ➔ ₱${fmtAfter})`;
   };
 
   const handleDelete = async (id: number | string) => {
@@ -387,23 +448,21 @@ export default function HistoryView() {
                               <div className="text-xs text-gray-400 mt-1.5 flex flex-wrap items-center gap-1.5 uppercase tracking-wide">
                                 {tx.type === "transfer" ? (
                                   <span>
-                                    {tx.fromAccountName}
-                                    {tx.fromAccountBalance !== undefined && ` (₱${tx.fromAccountBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                                    {formatBalanceTransition(tx.fromAccountName || "", tx.fromAccountId, tx.fromAccountBalance, tx.amount, true, tx.transferFee || 0)}
                                     {" ➔ "}
-                                    {tx.toAccountName}
-                                    {tx.toAccountBalance !== undefined && ` (₱${tx.toAccountBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                                    {formatBalanceTransition(tx.toAccountName || "", tx.toAccountId, tx.toAccountBalance, tx.amount, false, 0)}
                                   </span>
                                 ) : tx.type === "income" ? (
                                   <span>
-                                    {tx.toAccountName}
-                                    {tx.toAccountBalance !== undefined && ` (Bal: ₱${tx.toAccountBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                                    {formatBalanceTransition(tx.toAccountName || "", tx.toAccountId, tx.toAccountBalance, tx.amount, false, 0)}
                                   </span>
                                 ) : (
                                   <span>
-                                    {tx.fromAccountName}
-                                    {tx.fromAccountBalance !== undefined && ` (Bal: ₱${tx.fromAccountBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                                    {formatBalanceTransition(tx.fromAccountName || "", tx.fromAccountId, tx.fromAccountBalance, tx.amount, true, 0)}
                                   </span>
                                 )}
+                                <span className="text-gray-300">•</span>
+                                <span className="text-gray-400 lowercase">{formatTime(tx.date)}</span>
                               </div>
                             </div>
                           </div>

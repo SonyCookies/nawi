@@ -443,7 +443,7 @@ export default function BudgetsView() {
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-0.5">
                       Limit
                     </div>
-                    <div className="text-sm font-bold text-gray-800 truncate">
+                    <div className="text-md font-bold text-gray-800 truncate">
                       {formatCurrency(limit!)}
                     </div>
                   </div>
@@ -458,7 +458,7 @@ export default function BudgetsView() {
                 </div>
 
                 {/* Leftover / Over limit subtext */}
-                <div className={`text-[10px] font-bold ${textColor} mt-0.5`}>
+                <div className={`text-[12px] font-bold ${textColor} mt-0.5`}>
                   {spent > limit! 
                     ? `${formatCurrency(spent - limit!)} Over Limit`
                     : `${formatCurrency(limit! - spent)} Remaining`
