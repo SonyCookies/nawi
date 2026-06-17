@@ -238,16 +238,38 @@ export default function PaylaterDetailModal({ isOpen, onClose, account, onSaved 
               <span className="text-red-500 font-semibold">Over-allocated by {formatCurrency(Math.abs(diff), account.currency)}</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const defaultAmount = (currentBalance / termMonths).toFixed(2);
-              setPayments(Array(termMonths).fill(defaultAmount));
-            }}
-            className="px-3 py-1.5 rounded-xl border border-purple-100 hover:border-purple-200 text-purple-600 hover:bg-purple-50 font-semibold transition-all cursor-pointer"
-          >
-            Reset to Equal
-          </button>
+          <div className="flex items-center gap-2">
+            {Math.abs(diff) >= 0.01 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await db.accounts.update(account.id!, { balance: totalScheduled });
+                  window.dispatchEvent(new CustomEvent("show_toast", {
+                    detail: { 
+                      title: "Balance Adjusted", 
+                      description: `${account.name} balance adjusted to match total scheduled (₱${totalScheduled.toFixed(2)}).`, 
+                      type: "success" 
+                    }
+                  }));
+                  onSaved?.();
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl border border-amber-200 text-amber-700 hover:bg-amber-50 font-semibold transition-all cursor-pointer animate-fadeIn"
+              >
+                Adjust Balance to Match Total
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const defaultAmount = (currentBalance / termMonths).toFixed(2);
+                setPayments(Array(termMonths).fill(defaultAmount));
+              }}
+              className="px-3 py-1.5 rounded-xl border border-purple-100 hover:border-purple-200 text-purple-600 hover:bg-purple-50 font-semibold transition-all cursor-pointer"
+            >
+              Reset to Equal
+            </button>
+          </div>
         </div>
 
         {/* Schedule Preview Section with Inputs */}

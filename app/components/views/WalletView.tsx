@@ -293,9 +293,9 @@ export default function WalletView() {
     .filter((acc) => acc.includeInTotals && isLiability(acc))
     .reduce((sum, acc) => sum + Math.abs(acc.balance), 0);
 
-  // Total available credit (unused credit for Credit accounts included in totals)
+  // Total available credit (unused credit for Credit & Paylater accounts included in totals)
   const totalAvailableCredit = accounts
-    .filter((acc) => acc.includeInTotals && acc.type === "Credit" && acc.creditLimit !== undefined && acc.creditLimit > 0)
+    .filter((acc) => acc.includeInTotals && (acc.type === "Credit" || acc.type === "Paylater") && acc.creditLimit !== undefined && acc.creditLimit > 0)
     .reduce((sum, acc) => sum + Math.max(0, (acc.creditLimit ?? 0) - Math.abs(acc.balance)), 0);
 
   // Total balance of all accounts
@@ -307,7 +307,7 @@ export default function WalletView() {
       if (netWorthTab === "All") return true;
       if (netWorthTab === "Assets") return !isLiability(acc);
       if (netWorthTab === "Liabilities") return isLiability(acc);
-      if (netWorthTab === "Available Credit") return acc.type === "Credit";
+      if (netWorthTab === "Available Credit") return (acc.type === "Credit" || acc.type === "Paylater") && acc.creditLimit !== undefined && acc.creditLimit > 0;
       return true;
     });
   }, [accounts, netWorthTab]);
@@ -638,25 +638,45 @@ export default function WalletView() {
                         </div>
                         <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>{formatCurrency(-Math.abs(account.balance))}</div>
                       </div>
-                      {account.installmentTermMonths && account.balance > 0 && (
+                      {account.creditLimit !== undefined && account.creditLimit > 0 ? (
                         <div className="text-right">
                           <div className={`text-[10px] uppercase tracking-wider ${theme.subtextColor} mb-0.5`}>
-                            Monthly ({account.installmentTermMonths}mo)
+                            Available Limit
                           </div>
                           <div className={`text-sm font-bold truncate transition-all duration-300 ${isHidden ? "blur-sm select-none pointer-events-none" : ""}`}>
-                            ₱{((account.customInstallmentPayments && account.customInstallmentPayments.length > 0)
-                              ? account.customInstallmentPayments[0]
-                              : (Math.abs(account.balance) / account.installmentTermMonths)
-                            ).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            {formatNetWorth(account.creditLimit - Math.abs(account.balance))}
                           </div>
                         </div>
+                      ) : (
+                        account.installmentTermMonths && account.balance > 0 && (
+                          <div className="text-right">
+                            <div className={`text-[10px] uppercase tracking-wider ${theme.subtextColor} mb-0.5`}>
+                              Monthly ({account.installmentTermMonths}mo)
+                            </div>
+                            <div className={`text-sm font-bold truncate transition-all duration-300 ${isHidden ? "blur-sm select-none pointer-events-none" : ""}`}>
+                              ₱{((account.customInstallmentPayments && account.customInstallmentPayments.length > 0)
+                                ? account.customInstallmentPayments[0]
+                                : (Math.abs(account.balance) / account.installmentTermMonths)
+                              ).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        )
                       )}
                     </div>
-                    {/* Paylater installment progress bar */}
-                    {account.installmentTermMonths && (
+                    {/* Paylater installment/limit utilization progress bar */}
+                    {account.creditLimit !== undefined && account.creditLimit > 0 ? (
                       <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden mt-0.5">
-                        <div className="bg-white/60 h-full rounded-full" style={{ width: "100%" }} />
+                        <div
+                          className="bg-white h-full rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, (Math.abs(account.balance) / account.creditLimit) * 100)}%` }}
+                        />
                       </div>
+                    ) : (
+                      account.installmentTermMonths && (
+                        <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden mt-0.5">
+                          <div className="bg-white/60 h-full rounded-full" style={{ width: "100%" }} />
+                        </div>
+                      )
                     )}
                   </>
                 ) : (

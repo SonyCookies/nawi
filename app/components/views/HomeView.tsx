@@ -83,7 +83,7 @@ export default function HomeView() {
   });
 
   const [googleName, setGoogleName] = useState<string | null>(null);
-  const [hoveredDot, setHoveredDot] = useState<{ idx: number; type: "income" | "expense" } | null>(null);
+  const [hoveredDot, setHoveredDot] = useState<{ idx: number; type: "income" | "expense" | "both" } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -590,7 +590,7 @@ export default function HomeView() {
               {/* Follow Tooltip */}
               {hoveredDot !== null && chartData[hoveredDot.idx] && (
                 <div 
-                  className="absolute bg-purple-950 text-white text-[13px] px-4 py-3 rounded-2xl shadow-xl border border-purple-900/30 whitespace-nowrap z-20 gap-2 flex flex-col pointer-events-none transition-all duration-75 animate-fadeIn"
+                  className="absolute bg-purple-950 text-white text-[13px] px-4 py-3 rounded-2xl shadow-xl border border-purple-900/30 whitespace-nowrap z-40 gap-2 flex flex-col pointer-events-none transition-all duration-75 animate-fadeIn"
                   style={{
                     left: `${mousePos.x}px`,
                     top: `${mousePos.y - 12}px`,
@@ -600,7 +600,18 @@ export default function HomeView() {
                   <div className="text-[11px] text-purple-300 border-b border-purple-800/60 pb-1.5 mb-0.5 text-center uppercase tracking-wider font-bold">
                     {chartData[hoveredDot.idx].fullDateLabel}
                   </div>
-                  {hoveredDot.type === "income" ? (
+                  {hoveredDot.type === "both" ? (
+                    <>
+                      <div className="flex justify-between gap-6 items-center">
+                        <span className="text-emerald-450 font-medium">Incoming:</span>
+                        <span className="text-white font-bold">{formatCurrency(chartData[hoveredDot.idx].income)}</span>
+                      </div>
+                      <div className="flex justify-between gap-6 items-center">
+                        <span className="text-red-400 font-medium">Outgoing:</span>
+                        <span className="text-white font-bold">{formatCurrency(chartData[hoveredDot.idx].expense)}</span>
+                      </div>
+                    </>
+                  ) : hoveredDot.type === "income" ? (
                     <div className="flex justify-between gap-6 items-center">
                       <span className="text-emerald-450 font-medium">Incoming:</span>
                       <span className="text-white font-bold">{formatCurrency(chartData[hoveredDot.idx].income)}</span>
@@ -741,8 +752,8 @@ export default function HomeView() {
               {/* Columns containing vertical highlight lines and interactive hover areas */}
               <div className="absolute inset-y-0 left-11 right-0 flex justify-around items-stretch pb-0.5">
                 {chartData.map((data, idx) => {
-                  const isIncomeHovered = hoveredDot?.idx === idx && hoveredDot?.type === "income";
-                  const isExpenseHovered = hoveredDot?.idx === idx && hoveredDot?.type === "expense";
+                  const isIncomeHovered = hoveredDot?.idx === idx && (hoveredDot?.type === "income" || hoveredDot?.type === "both");
+                  const isExpenseHovered = hoveredDot?.idx === idx && (hoveredDot?.type === "expense" || hoveredDot?.type === "both");
                   const isAnyHovered = hoveredDot !== null;
                   
                   return (
@@ -816,11 +827,31 @@ export default function HomeView() {
 
             {/* X-Axis Labels */}
             <div className="flex pl-11 justify-around text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              {chartData.map((data, idx) => (
-                <span key={idx} className="w-[64px] text-center">
-                  {data.label}
-                </span>
-              ))}
+              {chartData.map((data, idx) => {
+                const isLabelHovered = hoveredDot?.idx === idx;
+                return (
+                  <span 
+                    key={idx} 
+                    className={`w-[64px] text-center cursor-pointer py-1 rounded-lg transition-all duration-200 ${
+                      isLabelHovered ? "text-purple-600 bg-purple-50" : "text-gray-400 hover:text-purple-600 hover:bg-gray-50/50"
+                    }`}
+                    onMouseEnter={() => setHoveredDot({ idx, type: "both" })}
+                    onMouseLeave={() => setHoveredDot(null)}
+                    onMouseMove={(e) => {
+                      const chartEl = document.querySelector('.chart-container');
+                      if (chartEl) {
+                        const rect = (chartEl as HTMLElement).getBoundingClientRect();
+                        setMousePos({
+                          x: e.clientX - rect.left,
+                          y: e.clientY - rect.top
+                        });
+                      }
+                    }}
+                  >
+                    {data.label}
+                  </span>
+                );
+              })}
             </div>
 
           </div>

@@ -23,6 +23,8 @@ export default function StatisticsView() {
     index: number;
   } | null>(null);
 
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+
   // Retrieve accounts and transactions
   const accounts = useLiveQuery(() => db.accounts.toArray()) || [];
   const transactions = useLiveQuery(() => db.transactions.toArray()) || [];
@@ -417,7 +419,15 @@ export default function StatisticsView() {
 
   // Doughnut Chart calculations
   const topCategories = useMemo(() => {
-    return categoryBreakdown.slice(0, 5);
+    if (categoryBreakdown.length <= 5) {
+      return categoryBreakdown;
+    }
+    const top5 = categoryBreakdown.slice(0, 5);
+    const othersAmount = categoryBreakdown.slice(5).reduce((sum, item) => sum + item.amount, 0);
+    return [
+      ...top5,
+      { name: "Others", amount: othersAmount }
+    ];
   }, [categoryBreakdown]);
 
   const categoryTotalSpending = useMemo(() => {
@@ -436,7 +446,8 @@ export default function StatisticsView() {
       "stroke-orange-500",
       "stroke-pink-500",
       "stroke-emerald-600",
-      "stroke-blue-500"
+      "stroke-blue-500",
+      "stroke-gray-400"
     ];
 
     const bgColors = [
@@ -444,7 +455,8 @@ export default function StatisticsView() {
       "bg-orange-50 text-orange-900 border-orange-100",
       "bg-pink-50 text-pink-900 border-pink-100",
       "bg-emerald-50 text-emerald-900 border-emerald-100",
-      "bg-blue-50 text-blue-900 border-blue-100"
+      "bg-blue-50 text-blue-900 border-blue-100",
+      "bg-gray-50 text-gray-900 border-gray-200"
     ];
 
     const dotColors = [
@@ -452,7 +464,8 @@ export default function StatisticsView() {
       "bg-orange-500",
       "bg-pink-500",
       "bg-emerald-600",
-      "bg-blue-500"
+      "bg-blue-500",
+      "bg-gray-400"
     ];
 
     return topCategories.map((cat, idx) => {
@@ -461,14 +474,17 @@ export default function StatisticsView() {
       const offset = circ - strokeLength + accumulatedPercent;
       accumulatedPercent -= strokeLength;
 
+      const isOthers = cat.name === "Others";
+      const colorIndex = isOthers ? 5 : (idx % 5);
+
       return {
         ...cat,
         percentage,
         strokeDasharray: `${strokeLength} ${circ}`,
         strokeDashoffset: offset,
-        color: colors[idx % colors.length],
-        bgColor: bgColors[idx % bgColors.length],
-        dotColor: dotColors[idx % dotColors.length]
+        color: colors[colorIndex],
+        bgColor: bgColors[colorIndex],
+        dotColor: dotColors[colorIndex]
       };
     });
   }, [topCategories, categoryTotalSpending]);
@@ -760,7 +776,7 @@ export default function StatisticsView() {
               ) : (
                 <div className="flex flex-col sm:flex-row items-center gap-6 mt-4 flex-1">
                   {/* SVG Doughnut */}
-                  <div className="relative w-32 h-32 shrink-0">
+                  <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
                     <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
                       {/* Underlay base circle */}
                       <circle
@@ -769,43 +785,87 @@ export default function StatisticsView() {
                         r="50"
                         fill="transparent"
                         stroke="#f3f4f6"
-                        strokeWidth="12"
+                        strokeWidth="10"
                       />
-                      {doughnutSegments.map((seg, idx) => (
-                        <circle
-                          key={idx}
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          fill="transparent"
-                          className={seg.color}
-                          strokeWidth="12"
-                          strokeDasharray={seg.strokeDasharray}
-                          strokeDashoffset={seg.strokeDashoffset}
-                          strokeLinecap="round"
-                        />
-                      ))}
+                      {doughnutSegments.map((seg, idx) => {
+                        const isHovered = hoveredCategory === seg.name;
+                        return (
+                          <circle
+                            key={idx}
+                            cx="60"
+                            cy="60"
+                            r="50"
+                            fill="transparent"
+                            className={`${seg.color} transition-all duration-200 cursor-pointer ${
+                              isHovered ? "opacity-100" : "opacity-90 hover:opacity-100"
+                            }`}
+                            strokeWidth={isHovered ? "15" : "10"}
+                            strokeDasharray={seg.strokeDasharray}
+                            strokeDashoffset={seg.strokeDashoffset}
+                            strokeLinecap="round"
+                            onMouseEnter={() => setHoveredCategory(seg.name)}
+                            onMouseLeave={() => setHoveredCategory(null)}
+                          />
+                        );
+                      })}
                     </svg>
+
+                    {/* Central Text Info Panel */}
+                    <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none w-24 overflow-hidden animate-fadeIn">
+                      {hoveredCategory ? (
+                        (() => {
+                          const seg = doughnutSegments.find(s => s.name === hoveredCategory);
+                          return (
+                            <>
+                              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold truncate max-w-full">
+                                {hoveredCategory}
+                              </span>
+                              <span className="text-sm font-extrabold text-gray-900 leading-tight">
+                                {seg ? `${(seg.percentage * 100).toFixed(0)}%` : "0%"}
+                              </span>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <>
+                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                            Total
+                          </span>
+                          <span className="text-xs font-black text-gray-900 leading-none truncate max-w-full mt-0.5">
+                            {formatCurrency(categoryTotalSpending)}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Categories List */}
                   <div className="flex-1 flex flex-col gap-2 w-full">
-                    {doughnutSegments.map((seg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-gray-100 ${seg.bgColor} transition-colors`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${seg.dotColor}`} />
-                          <span className="text-xs font-bold text-gray-900 truncate">
-                            {seg.name}
+                    {doughnutSegments.map((seg, idx) => {
+                      const isHovered = hoveredCategory === seg.name;
+                      return (
+                        <div
+                          key={idx}
+                          onMouseEnter={() => setHoveredCategory(seg.name)}
+                          onMouseLeave={() => setHoveredCategory(null)}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-all duration-200 cursor-pointer ${
+                            isHovered 
+                              ? `${seg.bgColor} border-gray-200 shadow-sm scale-[1.02]` 
+                              : "border-transparent hover:bg-gray-50/70"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${seg.dotColor}`} />
+                            <span className="text-xs font-bold text-gray-900 truncate">
+                              {seg.name}
+                            </span>
+                          </div>
+                          <span className="text-xs font-black text-gray-900 pl-2">
+                            {formatCurrency(seg.amount)}
                           </span>
                         </div>
-                        <span className="text-xs font-black text-gray-900 pl-2">
-                          {formatCurrency(seg.amount)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

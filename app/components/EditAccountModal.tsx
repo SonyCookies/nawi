@@ -76,7 +76,7 @@ export default function EditAccountModal({ isOpen, onClose, account }: EditAccou
         currency,
         includeInTotals,
         bank,
-        creditLimit: isCredit ? (parseFloat(creditLimit.replace(/,/g, "")) || 0) : undefined,
+        creditLimit: (isCredit || isPaylater) ? (parseFloat(creditLimit.replace(/,/g, "")) || 0) : undefined,
         paymentDueDay: (isCredit || isPaylater) && paymentDueDay ? (parseInt(paymentDueDay) || undefined) : undefined,
         installmentTermMonths: isPaylater ? (parseInt(installmentTermMonths) || 3) : undefined,
         earnsInterest: earns,
@@ -289,12 +289,11 @@ export default function EditAccountModal({ isOpen, onClose, account }: EditAccou
             </div>
           </div>
 
-          {/* Credit Limit Field (only if type is Credit) */}
-          {/* Credit fields */}
-          {type === "Credit" && (
+          {/* Credit & Paylater fields */}
+          {(type === "Credit" || type === "Paylater") && (
             <>
               <div className="flex flex-col gap-2 col-span-full md:col-span-1 animate-fadeInSimple">
-                <label className="text-sm font-medium tracking-wide text-gray-500">Credit Limit</label>
+                <label className="text-sm font-medium tracking-wide text-gray-500">{type === "Paylater" ? "Account Limit" : "Credit Limit"}</label>
                 <input 
                   type="text" 
                   value={creditLimit}
@@ -316,22 +315,6 @@ export default function EditAccountModal({ isOpen, onClose, account }: EditAccou
                 />
               </div>
             </>
-          )}
-
-          {/* Paylater fields */}
-          {type === "Paylater" && (
-            <div className="flex flex-col gap-2 col-span-full md:col-span-1 animate-fadeInSimple">
-              <label className="text-sm font-medium tracking-wide text-gray-500">Payment Due Day <span className="text-gray-300 text-xs">(day of month)</span></label>
-              <input
-                type="number"
-                min="1"
-                max="31"
-                value={paymentDueDay}
-                onChange={(e) => setPaymentDueDay(e.target.value)}
-                placeholder="e.g. 25"
-                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-base text-gray-950 font-medium placeholder-gray-400 focus:outline-none focus:border-purple-500/50 shadow-sm"
-              />
-            </div>
           )}
         </div>
 
