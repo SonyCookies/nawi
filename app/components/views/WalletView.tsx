@@ -186,6 +186,42 @@ export const getInitials = (name: string) => {
   return name.slice(0, 3).toUpperCase();
 };
 
+function CountUp({ value, duration = 1000, formatter }: { value: number; duration?: number; formatter: (val: number) => string }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const startValue = current;
+    const diff = value - startValue;
+
+    if (diff === 0) {
+      setCurrent(value);
+      return;
+    }
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      
+      // Easing: easeOutExpo
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      
+      setCurrent(startValue + diff * ease);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value, duration]);
+
+  return <>{formatter(current)}</>;
+}
+
 export default function WalletView() {
   const [netWorthTab, setNetWorthTab] = useState("All");
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -502,13 +538,18 @@ export default function WalletView() {
                   ? "text-emerald-600"
                   : "text-gray-900"
               } ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
-              {netWorthTab === "Assets"
-                ? formatNetWorth(totalAssets)
-                : netWorthTab === "Liabilities"
-                  ? formatNetWorth(totalLiabilities)
-                  : netWorthTab === "Available Credit"
-                    ? formatNetWorth(totalAvailableCredit)
-                    : formatNetWorth(netWorth)}
+              <CountUp
+                value={
+                  netWorthTab === "Assets"
+                    ? totalAssets
+                    : netWorthTab === "Liabilities"
+                      ? totalLiabilities
+                      : netWorthTab === "Available Credit"
+                        ? totalAvailableCredit
+                        : netWorth
+                }
+                formatter={formatNetWorth}
+              />
             </div>
             <div className="text-sm text-gray-400 font-medium">
               {netWorthTab === "Assets"
@@ -606,7 +647,9 @@ export default function WalletView() {
                         <div className={`text-[10px] uppercase tracking-wider ${theme.subtextColor} mb-0.5`}>
                           Used Credit
                         </div>
-                        <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>{formatCurrency(-Math.abs(account.balance))}</div>
+                        <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
+                          <CountUp value={-Math.abs(account.balance)} formatter={formatCurrency} />
+                        </div>
                       </div>
                       {account.creditLimit !== undefined && account.creditLimit > 0 && (
                         <div className="text-right">
@@ -614,7 +657,7 @@ export default function WalletView() {
                             Available Credit
                           </div>
                           <div className={`text-sm font-bold truncate transition-all duration-300 ${isHidden ? "blur-sm select-none pointer-events-none" : ""}`}>
-                            {formatNetWorth(account.creditLimit - Math.abs(account.balance))}
+                            <CountUp value={account.creditLimit - Math.abs(account.balance)} formatter={formatNetWorth} />
                           </div>
                         </div>
                       )}
@@ -636,7 +679,9 @@ export default function WalletView() {
                         <div className={`text-[10px] uppercase tracking-wider ${theme.subtextColor} mb-0.5`}>
                           Remaining Balance
                         </div>
-                        <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>{formatCurrency(-Math.abs(account.balance))}</div>
+                        <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
+                          <CountUp value={-Math.abs(account.balance)} formatter={formatCurrency} />
+                        </div>
                       </div>
                       {account.creditLimit !== undefined && account.creditLimit > 0 ? (
                         <div className="text-right">
@@ -644,7 +689,7 @@ export default function WalletView() {
                             Available Limit
                           </div>
                           <div className={`text-sm font-bold truncate transition-all duration-300 ${isHidden ? "blur-sm select-none pointer-events-none" : ""}`}>
-                            {formatNetWorth(account.creditLimit - Math.abs(account.balance))}
+                            <CountUp value={account.creditLimit - Math.abs(account.balance)} formatter={formatNetWorth} />
                           </div>
                         </div>
                       ) : (
@@ -654,10 +699,14 @@ export default function WalletView() {
                               Monthly ({account.installmentTermMonths}mo)
                             </div>
                             <div className={`text-sm font-bold truncate transition-all duration-300 ${isHidden ? "blur-sm select-none pointer-events-none" : ""}`}>
-                              ₱{((account.customInstallmentPayments && account.customInstallmentPayments.length > 0)
-                                ? account.customInstallmentPayments[0]
-                                : (Math.abs(account.balance) / account.installmentTermMonths)
-                              ).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              <CountUp
+                                value={
+                                  (account.customInstallmentPayments && account.customInstallmentPayments.length > 0)
+                                    ? account.customInstallmentPayments[0]
+                                    : (Math.abs(account.balance) / account.installmentTermMonths)
+                                }
+                                formatter={(v) => `₱${v.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                              />
                             </div>
                           </div>
                         )
@@ -684,7 +733,9 @@ export default function WalletView() {
                     <div className={`text-[10px] uppercase tracking-wider ${theme.subtextColor} mb-0.5`}>
                       Balance
                     </div>
-                    <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>{formatCurrency(account.balance)}</div>
+                    <div className={`text-2xl font-black truncate transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
+                      <CountUp value={account.balance} formatter={formatCurrency} />
+                    </div>
                   </>
                 )}
               </div>

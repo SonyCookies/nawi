@@ -74,6 +74,42 @@ function DaysBadge({ days }: { days: number }) {
   );
 }
 
+function CountUp({ value, duration = 1000, formatter }: { value: number; duration?: number; formatter: (val: number) => string }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const startValue = current;
+    const diff = value - startValue;
+
+    if (diff === 0) {
+      setCurrent(value);
+      return;
+    }
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      
+      // Easing: easeOutExpo
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      
+      setCurrent(startValue + diff * ease);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value, duration]);
+
+  return <>{formatter(current)}</>;
+}
+
 export default function HomeView() {
   const [isHidden, setIsHidden] = useState(() => {
     if (typeof window !== "undefined") {
@@ -85,6 +121,27 @@ export default function HomeView() {
   const [googleName, setGoogleName] = useState<string | null>(null);
   const [hoveredDot, setHoveredDot] = useState<{ idx: number; type: "income" | "expense" | "both" } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [animationProgress, setAnimationProgress] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 1000;
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      setAnimationProgress(ease);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   useEffect(() => {
     const savedProfile = sessionStorage.getItem("gdrive_user_profile");
@@ -520,7 +577,7 @@ export default function HomeView() {
             <div className="flex flex-col gap-1.5 z-10">
               <span className="text-[11px] text-gray-400 uppercase tracking-wider">This Month Out</span>
               <span className={`text-4xl font-black text-gray-900 leading-tight tracking-tight transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
-                {formatCurrency(monthlyExpense)}
+                <CountUp value={monthlyExpense} formatter={formatCurrency} />
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[12px] text-gray-400 z-10">
@@ -537,7 +594,7 @@ export default function HomeView() {
             <div className="flex flex-col gap-1.5 z-10">
               <span className="text-[11px] text-gray-400 uppercase tracking-wider">This Month In</span>
               <span className={`text-4xl font-black text-gray-900 leading-tight tracking-tight transition-all duration-300 ${isHidden ? "blur-md select-none pointer-events-none" : ""}`}>
-                {formatCurrency(monthlyIncome)}
+                <CountUp value={monthlyIncome} formatter={formatCurrency} />
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[12px] text-gray-400 z-10">
@@ -645,12 +702,12 @@ export default function HomeView() {
                       let d = "";
                       chartData.forEach((data, idx) => {
                         const x = ((idx * 2 + 1) / 14) * 100;
-                        const y = 100 - (data.income / maxVal) * 100;
+                        const y = 100 - (data.income / maxVal) * 100 * animationProgress;
                         if (idx === 0) {
                           d = `M ${x} ${y}`;
                         } else {
                           const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
-                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100;
+                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100 * animationProgress;
                           const cpX1 = prevX + (x - prevX) / 3;
                           const cpY1 = prevY;
                           const cpX2 = prevX + 2 * (x - prevX) / 3;
@@ -672,12 +729,12 @@ export default function HomeView() {
                       let d = "";
                       chartData.forEach((data, idx) => {
                         const x = ((idx * 2 + 1) / 14) * 100;
-                        const y = 100 - (data.expense / maxVal) * 100;
+                        const y = 100 - (data.expense / maxVal) * 100 * animationProgress;
                         if (idx === 0) {
                           d = `M ${x} ${y}`;
                         } else {
                           const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
-                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100;
+                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100 * animationProgress;
                           const cpX1 = prevX + (x - prevX) / 3;
                           const cpY1 = prevY;
                           const cpX2 = prevX + 2 * (x - prevX) / 3;
@@ -699,12 +756,12 @@ export default function HomeView() {
                       let d = "";
                       chartData.forEach((data, idx) => {
                         const x = ((idx * 2 + 1) / 14) * 100;
-                        const y = 100 - (data.income / maxVal) * 100;
+                        const y = 100 - (data.income / maxVal) * 100 * animationProgress;
                         if (idx === 0) {
                           d = `M ${x} ${y}`;
                         } else {
                           const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
-                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100;
+                          const prevY = 100 - (chartData[idx - 1].income / maxVal) * 100 * animationProgress;
                           const cpX1 = prevX + (x - prevX) / 3;
                           const cpY1 = prevY;
                           const cpX2 = prevX + 2 * (x - prevX) / 3;
@@ -726,12 +783,12 @@ export default function HomeView() {
                       let d = "";
                       chartData.forEach((data, idx) => {
                         const x = ((idx * 2 + 1) / 14) * 100;
-                        const y = 100 - (data.expense / maxVal) * 100;
+                        const y = 100 - (data.expense / maxVal) * 100 * animationProgress;
                         if (idx === 0) {
                           d = `M ${x} ${y}`;
                         } else {
                           const prevX = (((idx - 1) * 2 + 1) / 14) * 100;
-                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100;
+                          const prevY = 100 - (chartData[idx - 1].expense / maxVal) * 100 * animationProgress;
                           const cpX1 = prevX + (x - prevX) / 3;
                           const cpY1 = prevY;
                           const cpX2 = prevX + 2 * (x - prevX) / 3;
@@ -787,7 +844,7 @@ export default function HomeView() {
                           }
                         }}
                         className="absolute w-8 h-8 flex items-center justify-center cursor-pointer z-20"
-                        style={{ bottom: `calc(${(data.income / maxVal) * 100}% - 16px)` }}
+                        style={{ bottom: `calc(${(data.income / maxVal) * 100 * animationProgress}% - 16px)` }}
                       >
                         <div 
                           className={`w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-md transition-all duration-200 ${
@@ -811,7 +868,7 @@ export default function HomeView() {
                           }
                         }}
                         className="absolute w-8 h-8 flex items-center justify-center cursor-pointer z-20"
-                        style={{ bottom: `calc(${(data.expense / maxVal) * 100}% - 16px)` }}
+                        style={{ bottom: `calc(${(data.expense / maxVal) * 100 * animationProgress}% - 16px)` }}
                       >
                         <div 
                           className={`w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-md transition-all duration-200 ${
